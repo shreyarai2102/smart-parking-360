@@ -4,62 +4,23 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ParkingCircle, MapPin, LogOut, Clock, AlertCircle, CheckCircle } from "lucide-react"
+import { ParkingCircle, MapPin, LogOut, Clock, AlertCircle, CheckCircle, Zap } from "lucide-react"
 import { ParkingCard } from "@/components/parking-card"
 import { BookingFlow } from "@/components/booking-flow"
 import { NotificationsPanel } from "@/components/notifications-panel"
+import type { useSimulation } from "@/hooks/use-simulation"
 
 interface CitizenPortalProps {
   onLogout: () => void
+  simulation: ReturnType<typeof useSimulation>
+  demoMode: boolean
+  onDemoModeChange: (mode: boolean) => void
 }
 
-export function CitizenPortal({ onLogout }: CitizenPortalProps) {
+export function CitizenPortal({ onLogout, simulation, demoMode, onDemoModeChange }: CitizenPortalProps) {
   const [activeBooking, setActiveBooking] = useState<string | null>(null)
   const [completedBooking, setCompletedBooking] = useState(false)
   const [currentTab, setCurrentTab] = useState("nearby")
-
-  const mockParkingLots = [
-    {
-      id: "1",
-      name: "Downtown Central",
-      area: "Central Business District",
-      distance: 0.3,
-      occupancy: 85,
-      totalSpots: 150,
-      pricePerHour: 50,
-      availableSpots: 22,
-    },
-    {
-      id: "2",
-      name: "Metro Station Lot",
-      area: "Transport Hub",
-      distance: 0.5,
-      occupancy: 45,
-      totalSpots: 200,
-      pricePerHour: 30,
-      availableSpots: 110,
-    },
-    {
-      id: "3",
-      name: "Shopping Complex P1",
-      area: "Retail District",
-      distance: 0.8,
-      occupancy: 92,
-      totalSpots: 300,
-      pricePerHour: 40,
-      availableSpots: 24,
-    },
-    {
-      id: "4",
-      name: "Airport Terminal",
-      area: "Airport Area",
-      distance: 1.2,
-      occupancy: 60,
-      totalSpots: 500,
-      pricePerHour: 80,
-      availableSpots: 200,
-    },
-  ]
 
   const getOccupancyColor = (occupancy: number) => {
     if (occupancy < 50) return "bg-accent text-accent-foreground"
@@ -79,10 +40,22 @@ export function CitizenPortal({ onLogout }: CitizenPortalProps) {
               <p className="text-xs opacity-80">Driver Portal</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onLogout} className="text-primary-foreground hover:bg-white/20">
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDemoModeChange(!demoMode)}
+              className="text-primary-foreground hover:bg-white/20 flex items-center gap-2"
+              title={demoMode ? "Demo Mode (Fast)" : "Live Mode"}
+            >
+              <Zap className="w-4 h-4" />
+              {demoMode ? "Demo" : "Live"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onLogout} className="text-primary-foreground hover:bg-white/20">
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -107,8 +80,12 @@ export function CitizenPortal({ onLogout }: CitizenPortalProps) {
               </TabsList>
 
               <TabsContent value="nearby" className="space-y-6">
+                <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 flex items-center gap-2 text-sm">
+                  <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
+                  <span className="text-accent font-medium">Real-Time Pricing Engine (Simulated)</span>
+                </div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {mockParkingLots.map((lot) => (
+                  {simulation.parkingLots.map((lot) => (
                     <ParkingCard
                       key={lot.id}
                       {...lot}
@@ -183,6 +160,7 @@ export function CitizenPortal({ onLogout }: CitizenPortalProps) {
             parkingLotId={activeBooking || ""}
             onBook={() => setCompletedBooking(true)}
             onCancel={() => setActiveBooking(null)}
+            parkingLots={simulation.parkingLots}
           />
         )}
       </div>

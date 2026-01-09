@@ -5,26 +5,21 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react"
+import type { ParkingLot } from "@/hooks/use-simulation"
 
 interface BookingFlowProps {
   parkingLotId: string
   onBook: () => void
   onCancel: () => void
+  parkingLots: ParkingLot[]
 }
 
-const mockLots: Record<string, any> = {
-  "1": { name: "Downtown Central", price: 50, occupancy: 85, available: 22 },
-  "2": { name: "Metro Station Lot", price: 30, occupancy: 45, available: 110 },
-  "3": { name: "Shopping Complex P1", price: 40, occupancy: 92, available: 24 },
-  "4": { name: "Airport Terminal", price: 80, occupancy: 60, available: 200 },
-}
-
-export function BookingFlow({ parkingLotId, onBook, onCancel }: BookingFlowProps) {
+export function BookingFlow({ parkingLotId, onBook, onCancel, parkingLots }: BookingFlowProps) {
   const [step, setStep] = useState<"duration" | "confirmation">("duration")
   const [duration, setDuration] = useState<30 | 60 | 120>(60)
 
-  const lot = mockLots[parkingLotId] || mockLots["1"]
-  const totalCost = (duration / 60) * lot.price
+  const lot = parkingLots.find((l) => l.id === parkingLotId) || parkingLots[0]
+  const totalCost = (duration / 60) * lot.pricePerHour
   const qrCode = `QR-${parkingLotId}-${Date.now()}`
 
   if (step === "confirmation") {
@@ -124,7 +119,7 @@ export function BookingFlow({ parkingLotId, onBook, onCancel }: BookingFlowProps
                       {dur < 60 ? `${dur} min` : `${(dur / 60).toFixed(1)} hours`}
                     </p>
                   </div>
-                  <Badge className="bg-accent text-accent-foreground">₹{(dur / 60) * lot.price}</Badge>
+                  <Badge className="bg-accent text-accent-foreground">₹{(dur / 60) * lot.pricePerHour}</Badge>
                 </div>
               </button>
             ))}

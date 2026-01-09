@@ -1,14 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -19,38 +17,50 @@ import {
   Pie,
   Cell,
 } from "recharts"
-import { Shield, LogOut, TrendingUp, AlertCircle, Users } from "lucide-react"
+import { Shield, LogOut, TrendingUp, AlertCircle, Users, Zap } from "lucide-react"
 import { ANPRActivityFeed } from "@/components/anpr-activity-feed"
 import { ComplianceTable } from "@/components/compliance-table"
+import type { useSimulation } from "@/hooks/use-simulation"
 
 interface AdminDashboardProps {
   onLogout: () => void
+  simulation: ReturnType<typeof useSimulation>
+  demoMode: boolean
+  onDemoModeChange: (mode: boolean) => void
 }
 
-export function AdminDashboard({ onLogout }: AdminDashboardProps) {
+export function AdminDashboard({ onLogout, simulation, demoMode, onDemoModeChange }: AdminDashboardProps) {
   const [timeRange, setTimeRange] = useState("today")
 
-  // Mock Analytics Data
-  const occupancyData = [
-    { time: "6 AM", occupancy: 15 },
-    { time: "9 AM", occupancy: 65 },
-    { time: "12 PM", occupancy: 78 },
-    { time: "3 PM", occupancy: 82 },
-    { time: "6 PM", occupancy: 75 },
-    { time: "9 PM", occupancy: 45 },
-  ]
+  const totalCapacity = useMemo(
+    () => simulation.parkingLots.reduce((sum, lot) => sum + lot.totalSpots, 0),
+    [simulation.parkingLots],
+  )
 
-  const revenueData = [
-    { lot: "Downtown", revenue: 15000 },
-    { lot: "Metro", revenue: 8500 },
-    { lot: "Shopping", revenue: 12000 },
-    { lot: "Airport", revenue: 22000 },
-  ]
+  const totalOccupied = useMemo(
+    () => simulation.parkingLots.reduce((sum, lot) => sum + (lot.totalSpots - lot.availableSpots), 0),
+    [simulation.parkingLots],
+  )
+
+  const avgOccupancy = useMemo(() => Math.round((totalOccupied / totalCapacity) * 100), [totalOccupied, totalCapacity])
+
+  const occupancyData = useMemo(() => {
+    return simulation.parkingLots.map((lot) => ({
+      time: lot.name.split(" ")[0],
+      occupancy: lot.occupancy,
+    }))
+  }, [simulation.parkingLots])
+
+  const revenueData = useMemo(() => {
+    return simulation.parkingLots.map((lot) => ({
+      lot: lot.name.split(" ")[0],
+      revenue: Math.round((lot.occupancy / 100) * lot.totalSpots * lot.pricePerHour * 24),
+    }))
+  }, [simulation.parkingLots])
 
   const violationData = [
-    { name: "No Violation", value: 85, color: "#5ebc5e" },
-    { name: "Minor Violation", value: 10, color: "#eab308" },
-    { name: "Serious Violation", value: 5, color: "#ef4444" },
+    { name: "No Violation", value: Math.max(80, 100 - simulation.violations), color: "#5ebc5e" },
+    { name: "Overstay Detected", value: simulation.violations, color: "#ef4444" },
   ]
 
   return (
@@ -65,14 +75,31 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
               <p className="text-xs opacity-80">Municipal Authority Dashboard</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={onLogout} className="text-primary-foreground hover:bg-white/20">
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDemoModeChange(!demoMode)}
+              className="text-primary-foreground hover:bg-white/20 flex items-center gap-2"
+              title={demoMode ? "Demo Mode (Fast)" : "Live Mode"}
+            >
+              <Zap className="w-4 h-4" />
+              {demoMode ? "Demo" : "Live"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onLogout} className="text-primary-foreground hover:bg-white/20">
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="mb-6 bg-primary/10 border border-primary/30 rounded-lg p-3 flex items-center gap-2 text-sm">
+          <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+          <span className="text-primary font-medium">Municipal Rule Engine (Simulated Real-Time)</span>
+        </div>
+
         {/* KPI Cards */}
         <div className="grid gap-4 md:grid-cols-4 mb-8">
           <Card className="border-0 shadow-md">
@@ -80,7 +107,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground font-medium">Total Capacity</p>
-                  <p className="text-3xl font-bold mt-2">1,150</p>
+                  <p className="text-3xl font-bold mt-2">{totalCapacity.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground mt-1">parking spots</p>
                 </div>
                 <div className="bg-primary/10 p-3 rounded-lg">
@@ -95,11 +122,16 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground font-medium">Current Occupancy</p>
-                  <p className="text-3xl font-bold mt-2">865</p>
+                  <p className="text-3xl font-bold mt-2">{totalOccupied}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-muted-foreground">75%</span>
+                    <span className="text-xs text-muted-foreground">{avgOccupancy}%</span>
                     <div className="w-full bg-secondary rounded-full h-1.5 flex-1">
-                      <div className="h-full bg-yellow-500 rounded-full" style={{ width: "75%" }} />
+                      <div
+                        className={`h-full rounded-full ${
+                          avgOccupancy < 50 ? "bg-accent" : avgOccupancy < 80 ? "bg-yellow-500" : "bg-destructive"
+                        }`}
+                        style={{ width: `${avgOccupancy}%` }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -112,7 +144,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground font-medium">Active Violations</p>
-                  <p className="text-3xl font-bold mt-2 text-destructive">24</p>
+                  <p className="text-3xl font-bold mt-2 text-destructive">{simulation.violations}</p>
                   <p className="text-xs text-muted-foreground mt-1">requiring action</p>
                 </div>
                 <div className="bg-destructive/10 p-3 rounded-lg">
@@ -127,10 +159,12 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground font-medium">Revenue (Today)</p>
-                  <p className="text-3xl font-bold mt-2 text-accent">₹57,500</p>
+                  <p className="text-3xl font-bold mt-2 text-accent">
+                    ₹{revenueData.reduce((sum, r) => sum + r.revenue, 0).toLocaleString()}
+                  </p>
                   <div className="flex items-center gap-1 mt-1">
                     <TrendingUp className="w-3 h-3 text-accent" />
-                    <span className="text-xs text-accent">+12% vs yesterday</span>
+                    <span className="text-xs text-accent">Dynamic pricing active</span>
                   </div>
                 </div>
               </div>
@@ -154,8 +188,8 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Occupancy Trends</CardTitle>
-                    <CardDescription>Real-time parking capacity throughout the day</CardDescription>
+                    <CardTitle>Occupancy Trends (Live ANPR Feed)</CardTitle>
+                    <CardDescription>Real-time parking capacity by lot</CardDescription>
                   </div>
                   <div className="flex gap-2">
                     {["today", "week", "month"].map((range) => (
@@ -174,7 +208,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={occupancyData}>
+                  <BarChart data={occupancyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="time" />
                     <YAxis />
@@ -182,15 +216,8 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
                       contentStyle={{ backgroundColor: "hsl(var(--card))", border: "none", borderRadius: "0.5rem" }}
                     />
                     <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="occupancy"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
-                      name="Occupancy %"
-                      dot={{ fill: "hsl(var(--primary))" }}
-                    />
-                  </LineChart>
+                    <Bar dataKey="occupancy" fill="hsl(var(--primary))" name="Occupancy %" />
+                  </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -200,8 +227,8 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
           <TabsContent value="revenue">
             <Card className="border-0 shadow-md">
               <CardHeader>
-                <CardTitle>Revenue by Location</CardTitle>
-                <CardDescription>Today's earnings per parking lot</CardDescription>
+                <CardTitle>Revenue by Location (AI-Based Dynamic Pricing)</CardTitle>
+                <CardDescription>Estimated earnings per parking lot</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -223,8 +250,8 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
           <TabsContent value="violations">
             <Card className="border-0 shadow-md">
               <CardHeader>
-                <CardTitle>Violation Distribution</CardTitle>
-                <CardDescription>Current parking violations by severity</CardDescription>
+                <CardTitle>Violation Distribution (Overstay Detection)</CardTitle>
+                <CardDescription>Automated enforcement by system</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col md:flex-row items-center justify-center gap-8">
                 <ResponsiveContainer width="100%" height={300}>
@@ -234,7 +261,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, value }) => `${name}: ${value}%`}
+                      label={({ name, value }) => `${name}: ${value}`}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
@@ -252,7 +279,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
                       <div className="w-4 h-4 rounded" style={{ backgroundColor: item.color }} />
                       <div>
                         <p className="font-medium text-sm">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">{item.value}%</p>
+                        <p className="text-xs text-muted-foreground">{item.value}</p>
                       </div>
                     </div>
                   ))}
@@ -263,7 +290,7 @@ export function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
           {/* ANPR Activity */}
           <TabsContent value="anpr">
-            <ANPRActivityFeed />
+            <ANPRActivityFeed anprLogs={simulation.anprLogs} />
           </TabsContent>
 
           {/* Compliance */}
