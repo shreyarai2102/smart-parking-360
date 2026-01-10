@@ -20,7 +20,8 @@ export function BookingFlow({ parkingLotId, onBook, onCancel, parkingLots }: Boo
 
   const lot = parkingLots.find((l) => l.id === parkingLotId) || parkingLots[0]
   const totalCost = (duration / 60) * lot.pricePerHour
-  const qrCode = `QR-${parkingLotId}-${Date.now()}`
+  const bookingId = `BOOK-${parkingLotId}-${Date.now()}`
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(bookingId)}`
 
   if (step === "confirmation") {
     return (
@@ -64,14 +65,13 @@ export function BookingFlow({ parkingLotId, onBook, onCancel, parkingLots }: Boo
               {/* QR Code Section */}
               <div className="flex flex-col items-center justify-center p-8 bg-secondary/20 rounded-lg">
                 <div className="w-48 h-48 bg-white rounded-lg p-4 flex items-center justify-center border-2 border-primary">
-                  <div className="text-center">
-                    <p className="text-sm font-mono text-muted-foreground mb-2">QR Code</p>
-                    <div className="w-32 h-32 bg-primary rounded flex items-center justify-center">
-                      <p className="text-xs text-primary-foreground text-center break-all px-2">{qrCode}</p>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-3">Show at entry gate</p>
-                  </div>
+                  <img
+                    src={qrCodeUrl || "/placeholder.svg"}
+                    alt={`QR Code: ${bookingId}`}
+                    className="w-full h-full object-contain"
+                  />
                 </div>
+                <p className="text-xs text-muted-foreground mt-3">Show at entry gate</p>
               </div>
             </div>
 
