@@ -20,6 +20,16 @@ import {
 import { Shield, LogOut, TrendingUp, AlertCircle, Users, Zap } from "lucide-react"
 import { ANPRActivityFeed } from "@/components/anpr-activity-feed"
 import { ComplianceTable } from "@/components/compliance-table"
+import { ComplianceScore } from "@/components/compliance-score"
+import { ExplainableAlerts } from "@/components/explainable-alerts"
+import { SystemStatusBar } from "@/components/system-status-bar"
+import { AuditTrail } from "@/components/audit-trail"
+import { WhatIfSimulation } from "@/components/what-if-simulation"
+import { AuthorityOverride } from "@/components/authority-override"
+import { MCD311Integration } from "@/components/mcd-311-integration"
+import { ComplaintHeatmap } from "@/components/complaint-heatmap"
+import { GovernanceIntelligence } from "@/components/governance-intelligence"
+import { FutureIntegrations } from "@/components/future-integrations"
 import type { useSimulation } from "@/hooks/use-simulation"
 
 interface AdminDashboardProps {
@@ -171,6 +181,36 @@ export function AdminDashboard({ onLogout, simulation, demoMode, onDemoModeChang
             </CardContent>
           </Card>
         </div>
+
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
+          <ComplianceScore violations={simulation.violations} occupancy={avgOccupancy} capacity={totalCapacity} />
+          <SystemStatusBar />
+        </div>
+
+        <ExplainableAlerts violations={simulation.violations} occupancy={avgOccupancy} anprLogs={simulation.anprLogs} />
+
+        <div className="my-8">
+          <AuditTrail />
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
+          <WhatIfSimulation currentOccupancy={avgOccupancy} currentCapacity={totalCapacity} />
+          <AuthorityOverride />
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
+          <ComplaintHeatmap />
+          <GovernanceIntelligence />
+        </div>
+
+        <div className="mb-8">
+          <MCD311Integration />
+        </div>
+
+        <div className="mb-8">
+          <FutureIntegrations />
+        </div>
+        {/* </CHANGE> */}
 
         {/* Analytics Tabs */}
         <Tabs defaultValue="occupancy" className="w-full">
